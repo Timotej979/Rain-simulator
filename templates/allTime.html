@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Double Values Graph</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@2.9.3/dist/Chart.min.js"></script>
+</head>
+<body>
+
+<div>
+    <canvas id="doubleValuesChart"></canvas>
+</div>
+
+<form action="/data" method="post">
+  <label for="double_value">Double Value:</label>
+  <input type="number" id="double_value" name="double_value" step="0.01">
+  <input type="submit" value="Submit">
+</form>
+
+<script>
+    var ctx = document.getElementById('doubleValuesChart').getContext('2d');
+    var chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Double Values',
+                backgroundColor: 'rgb(255, 99, 132)',
+                borderColor: 'rgb(255, 99, 132)',
+                data: []
+            }]
+        },
+        options: {}
+    });
+
+    //fetch data from database
+    fetch('/double_values_data')
+        .then(response => response.json())
+        .then(data => {
+            chart.data.labels = data.labels;
+            chart.data.datasets[0].data = data.values;
+            chart.update();
+        });
+</script>

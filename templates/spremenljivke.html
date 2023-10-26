@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Vnos spremenljivk</title>
+</head>
+
+<body>
+    
+<h1>Vnos spremenljivk</h1>
+
+<p>Prosim vpišite spremenljivke, ki so značilne za meritev.</p>
+
+    <form>
+    <!-- from action="kam" method="POST"-->
+    <!-- get request poslje to na drugo spletno stran, post je bolj rpimeren za streznike in shranjevanje inf-->
+        <div>
+            <label for="visinaStojala">Višina stojala [cm]</label>
+            <input type="number" name="visinaStojala" id="visinaStojala" min="1" max="2" required>
+        </div>
+        <div>
+            <label for="pretok">Pretok[l/s oz. dm^3/s]</label>
+            <input type="number" name="pretok" id="pretok" required>
+        </div>
+        <div>
+            <label for="lokacijaDezemera">Lokacija dežemera: LOK1,LOK2...</label>
+            <input type="text" name="lokacijaDezemera" id="lokacijaDezemera" placeholder="LOK1 ali LOK2" required>
+        </div>
+        <div>
+            <label for="izvajalec">Izvajalec/ka meritev [ime in priimek]</label>
+            <input type="text" name="izvajalec" id="izvajalec" required>
+        </div>
+        <div>
+            <label for="komentar">Komentar [neobvezno, do 60 znakov]</label>
+            <input type="text" name="komentar" id="komentar">
+        </div>
+        <button type="submit">Pošlji</button>
+    </form>
+</body>
+</html>

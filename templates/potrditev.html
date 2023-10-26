@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>EKSPERIMENTI</title>
+  <meta name="description" content="Oblak" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="stylesheet" type="text/css" href="/static/style.css" />
+</head>
+<body>
+  <div class="header">
+    <h1>potrditev izbrisa</h1>
+  </div>
+  <div class="section">
+
+    <p>potrdi izbris s pritiskom na gumb</p>
+    <form action="/eksperimenti_izbris/{{ id }}" method="post">
+        <input type="hidden" name="_method" value="DELETE">
+        <input type="submit" value="Delete">
+    </form>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,274 @@
+:root {
+    --one-color: #0000FF;
+    --alt-color: #00CCFF;
+    --non-color: #666666;
+    --err-color: #FF6600;
+    --gnd-color: #EEEEEE;
+    --off-color: #DDDDDD;
+}
+html {
+  margin:0;
+  padding:0;
+  background:var(--off-color);
+}
+body {
+  margin:0;
+  padding:0;
+  background-color: #FFFFFF;
+  font-family:sans-serif;
+  font-size:12pt;
+  width:420pt;
+  max-width:100%;
+  margin-left:auto;
+  margin-right:auto;
+}
+
+/* a {
+  color:var(--one-color);
+  text-decoration:none;
+  outline:0;
+  font-weight:bold;
+  font-family:monospace;
+}
+a:focus,
+a:hover {
+  background:#FFFFFF;
+  color:var(--alt-color);
+} */
+
+div.header {
+  padding:20pt 0;
+  max-width:100%;
+}
+div.section {
+  padding:20pt 0;
+  max-width:100%;
+}
+
+p,
+ul,
+h1,
+h2 {
+  margin:0!important;
+  padding:7pt 7pt;
+  display:block;
+}
+ol,
+ul,
+dl {
+  list-style-type:none;
+}
+li {
+  padding:4pt 0;
+}
+h1,
+h2 {
+  margin-bottom:20pt;
+  font-weight: bold;
+  text-align:center;
+  font-family:monospace;
+}
+h1 {
+  color:#000000;
+  font-size:3em;
+}
+h2 {
+  color:#000000;
+  font-size:2em;
+}
+
+form * {
+  font-family:monospace;
+}
+form p span {
+  display:flex;
+  margin:0;
+  width:100%;
+}
+p span.required::after {
+  content: "*";
+  color:var(--non-color);
+  font-weight:bold;
+  font-family:monospace;
+}
+form p label {
+  color:var(--non-color);
+}
+
+form p input,
+form p button,
+form p select {
+  padding:5pt;
+  border:0;
+  border-bottom:var(--non-color) solid 2pt;
+  background:transparent;
+  flex:1;
+  outline:0;
+  font-family:monospace; font-size:12pt;
+  font-weight:bold;
+}
+form p input:focus,
+form p button:focus,
+form p select:focus,
+form p input:hover,
+form p button:hover,
+form p select:hover {
+  background:#FFFFFF;
+}
+form p input:invalid {
+  border-color:var(--err-color);
+}
+form p.submit button {
+  border:#003459 solid 2pt;
+  color:#003459;
+  font-weight:bold;
+  border-radius: 5px;
+  box-shadow: 3px 2px;
+}
+form p.submit button:focus,
+form p.submit button:hover {
+  box-shadow: 0px 0px;
+}
+form p.submit button:disabled {
+  border:var(--non-color) solid 2pt;
+  color:var(--non-color);
+  font-weight:normal;
+}
+
+form p textarea {
+  width:100%;
+  min-height:10em;
+}
+
+p.img {
+  text-align:center;
+}
+p.img img {
+  width:100%;
+}
+
+table, th, td {
+  border: 2px solid #003459;
+}
+
+th {
+  background-color: #007ea7;
+}
+
+table {
+  margin: 0px 15px;
+}
+
+.malaSlika {
+  vertical-align: middle;
+  display: inline-block;
+  height: 20px;
+  width: auto;
+  margin-right: 10px;
+}
+
+.inlineBlock {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 10px;
+}
+
+/* header {
+  height: 150px;
+  background-image: url(https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQmQBmLy-J1YQllWRBJHDNechbVL92y4xKlV6q_WAB6ffzuPhRHinuo_Be37wciI1k6ECU&usqp=CAU);
+}  */
+
+header {
+  position: relative; /* make the header element a positioned container */
+  height: 150px;
+  background-image: url(https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQmQBmLy-J1YQllWRBJHDNechbVL92y4xKlV6q_WAB6ffzuPhRHinuo_Be37wciI1k6ECU&usqp=CAU);
+  background-size: cover;
+  background-position: center center;
+}
+
+/* header h1 {
+  color: white;
+  vertical-align: middle;
+  z-index: 1;
+} */
+
+header h1 {
+  color: white;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  filter: brightness(200%);
+  font-size: 30px;
+}
+
+.list {
+  display: flex; /* set the display property of the ul element to flex
+  /* list-style: none; remove the default list-style */
+  padding: 0; /* remove any padding */
+}
+
+.list a {
+  display: block; /* set the display property of the list item to block */
+  padding: 10px; /* add padding to the list items */
+  background-color: #ffffff; /* add a background color to the list items */
+  margin: 0px 5px; /* add some margin to separate the list items */
+  border: 2px solid #003459;
+  background-color: #ffffff;
+  border-radius: 5px;
+  box-shadow: 2px 3px;
+  text-decoration: none;
+}
+
+.list a:hover {
+  display: block; /* set the display property of the list item to block */
+  padding: 10px; /* add padding to the list items */
+  background-color: #ffffff; /* add a background color to the list items */
+  margin: 0px 5px; /* add some margin to separate the list items */
+  border: 2px solid #003459;
+  border-radius: 5px;
+  box-shadow: 0px 0px;
+  text-decoration: none;
+}
+
+a {
+  color: #003459;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: 600;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+br {
+  height: 5px;
+}
+
+form input {
+  background-color: white;
+  color: #003459;
+  border: 1px solid #003459;
+  border-radius: 3px;
+  box-shadow: 2px 1px;
+  font-weight: bold;
+  margin-left: 10px;
+}
+
+form input:hover {
+  background-color: white;
+  color: #003459;
+  border: 1px solid #003459;
+  border-radius: 3px;
+  box-shadow: 0px 0px;
+  font-weight: bold;
+}
+
+.manjsi {
+  height: 5px;
+}
+
+header a {
+  color: white;
+}

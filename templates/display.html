@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Podatki z dežemera</title>
+  <meta name="description" content="Oblak" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="stylesheet" type="text/css" href="/static/style.css" />
+</head>
+<body>
+    <header>
+        <h1>Meritve dežemera s časovnim žigom</h1>
+    </header>
+    <br>
+    <p>Na tej spletni strani si lahko ogledate podatke, pridobljene z dežemerom.
+        Za ogled meritev v csv datoteki, prosim odprite stran svojega eksperimenta, ter 
+        s klikom na gumb <em>csv</em> shranite narejene meritve v datoteko.
+    </p>    
+    <table>
+        <tr>
+            <th>Double Value</th>
+            <th>String Value</th>
+        </tr>
+        {% for row in rows %}
+            <tr>
+                <td>{{ row[1] }}</td>
+                <td>{{ row[2] }}</td>
+            </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>

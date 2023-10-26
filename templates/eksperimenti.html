@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>EKSPERIMENTI</title>
+  <meta name="description" content="Oblak" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="stylesheet" type="text/css" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <h1>Eksperimenti</h1>
+  </header>
+  
+  <div class="section">
+  <p>V spodnji vrstici ustvari eksperiment do katerega lahko potem dostopaš preko linka</p>
+
+  <ul>
+    {% for d in data %}
+      <li>
+          <a href="eksperiment/{{ d[0] }}">{{ d[1] }}</a> ({{ d[2] }})
+          <br class="manjsi">
+          <form action="/eksperimenti/{{ d[0] }}" method="post">
+              <input type="hidden" name="_method" value="DELETE">
+              <br>
+              <input type="submit" value="Delete">
+          </form>
+      </li>
+    {% endfor %}
+  </ul>
+
+  <form id="form" action="/eksperimenti" method="post" accept-charset="utf-8" autocomplete="on">
+    <p>
+      <label for="ime">Dodaj poljubno ime eksperimenta</label>
+      <span class="required"><input id="ime" autocomplete="name" type="text" name="ime" maxlength="100" pattern="[\s]*[\S]+.*" required /></span>
+    </p>
+    <p class="submit">
+    <span><button id="submit" type="submit">Dodaj eksperiment</button></span>
+    </p>
+    
+  </form>
+  </div>
+</body>
+</html>

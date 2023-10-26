@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>EKSPERIMENTI</title>
+  <meta name="description" content="Oblak" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+  
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="stylesheet" type="text/css" href="/static/style.css" />
+</head>
+
+<body>
+  <header>
+    <p><a href="/eksperimenti">eksperimenti</a></p>
+    <h1>{{ data[1] }}</h1>
+    <!-- <p>{{ conf }}</p> -->
+  </header>
+  <br>
+  <p>Spodaj so predstavljeni podatki o eksperimentu, in sicer njegova identifikacijska številka, ime, vreme dodajanja eksperimenta,
+    časovni žig začetka in konca eksperimenta.
+  </p>
+  <!-- <p><em>{{ data }}</em></p> -->
+  <p>Pred začetkom eksperimenta je treba shraniti konfiguracijo eksperimenta.
+    Konfiguracija je sestavljena iz zaporedne številke same konfiguracije, identifikacijske številke 
+    pripadajočega eksperimenta, izvajalca/izvajalke, časa vnosa konfiguracije (se izpolni samodejno), višine stojala [cm] 
+    , pretoka [l/s], tipa lokacije (C,X ali Y), vrednosti lokacije in neobveznega komentarja.
+    Vsi ostali našteti parametri konfiguracije so obvezni. Začetek eksperimenta ni možen brez vnosa konfiguracije.
+  </p>
+
+{% if results %}
+<section>
+  <h1>Rezultati</h1>
+
+    <p class="img"><img src="data:image/png;base64,{{ figdata_png }}" alt="Graph"></p>
+</section>
+{% endif %}
+    <section>
+      <h1>Dnevnik</h1>
+      <p>
+      <table>
+        <tr>
+            <th>Izvajalec</th>
+            <th>timestamp</th>
+            <th>visina</th>
+            <th>pretok</th>
+            <th>tlak</th>
+            <th>tip lokacije</th>
+            <th>vrednost lokacije</th>
+        </tr>
+        {% for row in conf %}
+        <tr>
+            <td>{{ row[2] }}</td>
+            <td>{{ row[3] }}</td>
+            <td>{{ row[4] }}</td>
+            <td>{{ row[5] }}</td>
+            <td>{{ row[6] }}</td>
+            <td>{{ row[7] }}</td>
+            <td>{{ row[8] }}</td>
+        </tr>
+        {% endfor %}
+      </table>
+      </p>
+    </section>
+  
+  
+  <div class="section">
+    <h1>Konfiguracija</h1>
+
+    <p>Prosim vpišite spremenljivke, ki so značilne za meritev.</p>
+
+    <form id="form2" action="/eksperiment/{{ data[0] }}" method="post" accept-charset="utf-8" autocomplete="on"> 
+  
+      <p>
+        <label for="visinaStojala">Višina stojala [cm]</label>
+        <span><input type="number" name="visinaStojala" id="visinaStojala" min="0" required></span>
+      </p>
+
+      <p>
+        <label for="pretok">Pretok [l/s oz. dm^3/s]</label>
+      <span><input type="number" name="pretok" id="pretok" min = "0" step="any" required></span>
+      </p>
+
+      <p>
+        <label for="tlak">Tlak [Pa]</label>
+      <span><input type="number" name="tlak" id="tlak" step="any" required></span>
+      </p>
+        
+        <p>
+          <label for="lokacijaTip">Lokacija dežemera</label>
+          <span><select name="lokacijaTip" id="lokacijaTip">
+            <option value="C">Center</option>
+            <option value="X">X-os</option>
+            <option value="Y">Y-os</option>
+          </select></span>
+        </p>
+
+        <p>
+          <label for="lokacijaVrednost">Vrednost lokacije</label>
+          <span><input type="number" name="lokacijaVrednost" id="lokacijaVrednost" value="0"></span>
+        </p>
+        
+      <p>
+          <label for="izvajalec">Izvajalec/ka meritev [ime in priimek]</label>
+          <span><input type="text" name="izvajalec" id="izvajalec" required></span>
+      </p>
+
+      <p>
+          <label for="komentar">Komentar [neobvezno, do 60 znakov]</label>
+          <textarea id="komentar" name="komentar"></textarea>
+      </p >
+      <p class="submit">
+        <span><button type="submit" name="action" value="save"  {{ save_disabled }} >Shrani</button></span></p>
+    </form>
+  </div>
+
+
+  <div class="section">
+    {% if not start_enabled and stop_enabled %}
+    <p><strong>Eksperiment je v teku. Začel se je ob {{ data[3] }}.</strong></p>
+    {% elif not start_enabled and not stop_enabled and stanje %}
+    <p>Eksperiment je končan. Trajal je od {{ data[3] }} do {{ data[4] }}.</p>
+    {% else %}
+    <p>Po shranjeni konfiguraciji se omogoči klik na gumb <em>Start</em>, s katerim zaženete eksperiment.
+      S klikom na gumb <em>Stop</em> prekinete pošiljanje podatkov iz simulatorja na strežnik.</p>
+    {% endif %}
+    
+    <form id="form1" action="/eksperiment/{{ data[0] }}" method="post" accept-charset="utf-8" autocomplete="on">
+      {% if start_enabled %}
+      <p class="submit">
+      <span><button type="submit" name="action" value="start">Start</button></span>
+      </p>
+      {% endif %}
+      {% if stop_enabled %}
+      <p class="submit">
+      <span><button type="submit" name="action" value="stop">Stop</button></span>
+      </p>
+      {% endif %}
+    </form>
+
+    <form action="/graph/{{ start }}/{{ stop }}" method="post" accept-charset="utf-8">
+      <p class="submit">
+        <span><button type="submit" name="action" value="Graf">Prikaži meritve</button></span>
+      </p>
+    </form>
+
+    <form action="/shrani_v_csv/{{ start }}/{{ stop }}" method="post">
+      <p class="submit">
+        <span><button type="submit" name="action" value="csv">Shrani v CSV</button></span>
+      </p>
+    </form>
+  </div>
+</body>
+</html>

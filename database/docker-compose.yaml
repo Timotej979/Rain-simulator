@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+
+  # DB service
+  db:
+    image: mongo:7.0.2
+    container_name: rain-simulator-db
+    restart: unless-stopped
+
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${DB_USER}
+      - MONGO_INITDB_ROOT_PASSWORD=${DB_PASS}
+      - MONGO_INITDB_DATABASE=${DB_NAME}
+
+    volumes:
+    - ${DB_DATA}:/data/db
+
+    ports:
+      - ${DB_PORT}:27017

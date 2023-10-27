@@ -2,26 +2,6 @@ version: '3.8'
 
 services:
 
-  # DB service
-  db:
-    image: mongo:7.0.2
-    container_name: rain-simulator-db
-    restart: unless-stopped
-
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${DB_USER}
-      - MONGO_INITDB_ROOT_PASSWORD=${DB_PASS}
-      - MONGO_INITDB_DATABASE=${DB_NAME}
-
-    volumes:
-    - ${DB_DATA}:/data/db
-
-    ports:
-      - ${DB_PORT}:27017
-
-  networks:
-    - backend
-
   # API service
   api:
     image: "rain-simulator-api:latest"
@@ -33,13 +13,30 @@ services:
     build:
       context: ./api
 
+    networks:
+      - backend
+
+  # Nginx reverse proxy service
+  nginx:
+    image: "rain-simulator-nginx:latest"
+    container_name: rain-simulator-nginx
+    restart: unless-stopped
+
+    build:
+      context: ./nginx
+
+    command: sh -c "nginx -g 'daemon off;'"
+
+    ports:
+      - ${NGINX_PORT}:8000
+
     depends_on:
-      db:
+      api:
         condition: service_started
 
     networks:
       - backend
-    
+  
 # Set networks
 networks:
   backend:

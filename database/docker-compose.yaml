@@ -18,3 +18,12 @@ services:
 
     ports:
       - ${DB_PORT}:27017
+
+    networks:
+      - db-api
+
+networks:
+  # Distributed API and DB network 
+  db-api:
+    external: true
+    name: rainsim-db-api

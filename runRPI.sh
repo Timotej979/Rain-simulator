@@ -9,4 +9,5 @@ source .env
 
 # Run the RPI container
 cd ./rpi
-docker-compose up
+docker compose build
+docker compose up

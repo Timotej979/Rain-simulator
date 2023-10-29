@@ -13,8 +13,14 @@ services:
     build:
       context: ./api
 
+    environment:
+      - API_CONFIG=${API_CONFIG}
+      - API_PREFIX=${API_PREFIX}
+      - API_DB_CONNECTION_STRING=${API_DB_CONNECTION_STRING}
+
     networks:
       - backend
+      - db-api
 
   # Nginx reverse proxy service
   nginx:
@@ -39,5 +45,11 @@ services:
   
 # Set networks
 networks:
+  # Nginx and API services network
   backend:
     driver: bridge
+  # Distributed API and DB network
+  db-api:
+    external: true
+    name: rainsim-db-api
+  

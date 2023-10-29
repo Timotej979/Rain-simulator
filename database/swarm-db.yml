@@ -5,8 +5,6 @@ services:
   # DB service
   db:
     image: mongo:7.0.2
-    container_name: rain-simulator-db
-    restart: unless-stopped
 
     environment:
       - MONGO_INITDB_ROOT_USERNAME=${DB_USER}

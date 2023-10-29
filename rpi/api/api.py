@@ -1,10 +1,13 @@
-import logging, os, sys
+#!/usr/bin/env python3
 
+# Import general libraries
+import logging, os, sys
 import asyncio
 from motor.motor_asyncio import AsyncIOMotorClient
-
 from aiohttp import web
 
+# Import local libraries
+from migrations.migrate import MigrationsManager
 
 #############################################################################################################################
 ####################################################### ENV VARIABLES #######################################################
@@ -25,13 +28,24 @@ DB_MAX_IDLE_TIME_MS = int(os.getenv("API_DB_MAX_IDLE_TIME_MS"))
 ######################################################### API MANAGER #########################################################
 ###############################################################################################################################
 
-class API_Manager():
+class APIManager():
     """
         API Manager for managing the API server
     """
 
     # Initialize API
     async def initialize_api(self):
+
+        # Create the migrate object and execute migrations if necessary
+        migrations = MigrationsManager(DB_CONNECTION_STRING)
+        
+        # Try to migrate DB
+        if await migrations.migrate():
+            log.info("## DB migration successfull ##")
+        else:
+            log.error("!! DB migration failed !!")
+            sys.exit(1)
+
         log.info("## Initializing API server ##")
 
         self.subapp = web.Application()
@@ -105,7 +119,7 @@ class API_Manager():
             finally:
                 return web.Response(text="## DB health-check successfull ##\n")
             
-    
+
 
 
 
@@ -158,7 +172,7 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
 
     # Create API_Manager object and initialize it
-    manager = API_Manager()
+    manager = APIManager()
     loop.run_until_complete(manager.initialize_api())
 
     # Start the server

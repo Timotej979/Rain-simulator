@@ -11,4 +11,4 @@ source .env
 
 # Run the database container
 cd ./database
-docker stack deploy -c swarm-db.yml db-stack
+docker stack deploy -c stack-db.yml db-stack

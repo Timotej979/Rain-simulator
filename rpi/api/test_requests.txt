@@ -1,0 +1,8 @@
+RAIN-SIMULATOR-API (Test requests)
+
+API REQUESTS:
+
+    HEALTHCHECK:
+    curl http://127.0.0.1:1234/rainsim-api/v1/healthz-api
+    curl http://127.0.0.1:1234/rainsim-api/healthz-db
+

@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  api:
+    image: timotej979/rain-simulator-api:latest
+    networks:
+      - db-api
+
+  nginx:
+    image: timotej979/rain-simulator-nginx:latest
+    ports:
+      - ${NGINX_PORT}:${NGINX_PORT}
+
+networks:
+  db-api:
+    external: true
+    name: rainsim-db-api

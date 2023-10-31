@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+
+  # API service
+  api:
+    image: "rain-simulator-api:latest"
+    restart: unless-stopped
+
+    command: sh -c "poetry run python /api/api.py"
+
+    build:
+      context: ./api
+
+    environment:
+      - API_CONFIG=${API_CONFIG}
+      - API_PREFIX=${API_PREFIX}
+      - API_DB_CONNECTION_STRING=mongodb://${DB_USER}:${DB_PASS}@db:27017/${DB_NAME}?authSource=admin
+      - API_DB_MIN_POOL_SIZE=${API_DB_MIN_POOL_SIZE}
+      - API_DB_MAX_POOL_SIZE=${API_DB_MAX_POOL_SIZE}
+      - API_DB_SERVER_SELECTION_TIMEOUT_MS=${API_DB_SERVER_SELECTION_TIMEOUT_MS}
+      - API_DB_MAX_IDLE_TIME_MS=${API_DB_MAX_IDLE_TIME_MS}
+
+    networks:
+      - backend
+      - db-api-net
+
+  # Nginx reverse proxy service
+  nginx:
+    image: "rain-simulator-nginx:latest"
+    restart: unless-stopped
+
+    build:
+      context: ./nginx
+
+    command: sh -c "nginx -g 'daemon off;'"
+
+    ports:
+      - ${NGINX_PORT}:8000
+
+    depends_on:
+      api:
+        condition: service_started
+
+    networks:
+      - backend
+  
+# Set networks
+networks:
+  # Nginx and API services network
+  backend:
+    driver: bridge
+  # Network for DB and API
+  db-api-net:
+    external: true
+    name: db-api

@@ -6,13 +6,9 @@ services:
   db:
     image: mongo:7.0.2
 
-    environment:
-      - MONGO_INITDB_ROOT_USERNAME=${DB_USER}
-      - MONGO_INITDB_ROOT_PASSWORD=${DB_PASS}
-      - MONGO_INITDB_DATABASE=${DB_NAME}
-
     volumes:
     - ${DB_DATA}:/data/db
+    - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
 
     ports:
       - ${DB_PORT}:27017

@@ -15,4 +15,4 @@ docker network create db-api
 
 # Run the DB compose
 cd ./database
-docker compose up -d
+docker compose up

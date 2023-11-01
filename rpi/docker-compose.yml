@@ -4,7 +4,8 @@ services:
 
   # API service
   api:
-    image: "rain-simulator-api:latest"
+    # Change to simulator when running prod scripts, don't want N different images in docker registry
+    image: "rain-sim-api:latest"
     restart: unless-stopped
 
     command: sh -c "poetry run python /api/api.py"
@@ -15,7 +16,7 @@ services:
     environment:
       - API_CONFIG=${API_CONFIG}
       - API_PREFIX=${API_PREFIX}
-      - API_DB_CONNECTION_STRING=mongodb://${DB_USER}:${DB_PASS}@db:27017/${DB_NAME}?authSource=admin
+      - API_DB_CONNECTION_STRING=mongodb://${DB_USER}:${DB_PASS}@db:27017/${DB_NAME}?authMechanism=SCRAM-SHA-256&authSource=${DB_NAME}
       - API_DB_MIN_POOL_SIZE=${API_DB_MIN_POOL_SIZE}
       - API_DB_MAX_POOL_SIZE=${API_DB_MAX_POOL_SIZE}
       - API_DB_SERVER_SELECTION_TIMEOUT_MS=${API_DB_SERVER_SELECTION_TIMEOUT_MS}
@@ -27,7 +28,8 @@ services:
 
   # Nginx reverse proxy service
   nginx:
-    image: "rain-simulator-nginx:latest"
+    # Change to simulator when running prod scripts, don't want N different images in docker registry
+    image: "rain-sim-nginx:latest"
     restart: unless-stopped
 
     build:

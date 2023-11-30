@@ -2,8 +2,6 @@
 import cv2
 import pyrealsense2 as rs
 
-logging.basicConfig(level=logging.INFO)
-
 class RealSense():
     """
     Class for RealSense camera
@@ -19,10 +17,12 @@ class RealSense():
     # Start streaming
     def start(self):
         # Start streaming
-        self.pipeline.start(config)
+        self.pipeline.start(self.config)
         
     # Stop streaming
     def stop(self):
+        # Close all windows
+        cv2.destroyAllWindows()
         # Stop streaming
         self.pipeline.stop()
 
@@ -101,33 +101,29 @@ if __name__ == '__main__':
     # Create a RealSense object
     rs_obj = RealSense()
 
-    # Start streaming
-    try:
-        rs_obj.start()
+    rs_obj.start()
 
-        while True:
-            color_frame, depth_frame = rs_obj.get_frames()
+    while True:
+        color_frame = rs_obj.get_rgb_frame()
+        depth_frame = rs_obj.get_depth_frame()
 
-            # Pick reference points
-            reference_points = rs_obj.pick_reference_points(color_frame)
+        # Pick reference points
+        reference_points = rs_obj.pick_reference_points(color_frame)
 
-            # Extract planar surface
-            planar_surface = rs_obj.extract_planar_surface(depth_frame)
+        # Extract planar surface
+        planar_surface = rs_obj.extract_planar_surface(depth_frame)
 
-            # Transform point cloud
-            transformed_point_cloud = rs_obj.transform_point_cloud(reference_points, planar_surface.to_array())
+        # Transform point cloud
+        transformed_point_cloud = rs_obj.transform_point_cloud(reference_points, planar_surface.to_array())
 
-            # Display the frames
-            cv2.imshow('Color Image', np.asanyarray(color_frame.get_data()))
-            cv2.imshow('Depth Image', np.asanyarray(depth_frame.get_data()))
+        # Display the frames
+        cv2.imshow('Color Image', np.asanyarray(color_frame))
+        cv2.imshow('Depth Image', np.asanyarray(depth_frame))
 
-            # Optionally display the transformed point cloud
-            pcl.visualization.CloudViewing().showPointCloud(transformed_point_cloud.astype(np.float32))
+        # Optionally display the transformed point cloud
+        pcl.visualization.CloudViewing().showPointCloud(transformed_point_cloud.astype(np.float32))
 
-            # Break the loop if 'q' is pressed
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-
-    finally:
-        rs_obj.stop()
-        cv2.destroyAllWindows()
+        # Break the loop if 'q' is pressed
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            rs_obj.stop()
+            break

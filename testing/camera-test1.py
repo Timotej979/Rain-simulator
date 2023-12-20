@@ -55,8 +55,6 @@ class RealSense():
             for y in range(width):
                 if x < depth_frame.get_height() and y < depth_frame.get_width():
                     depth_list[x][y] = depth_frame.get_distance(y, x)
-        # Normalize the depth values to the range 0-255
-        print(depth_list)
         return depth_list
 
 
@@ -109,6 +107,7 @@ class RealSense():
 
         return depth_frame_diff
 
+
     def homographic_transform(self, frame):
         # Set the homography points
         points_I = self.calibration_points
@@ -126,6 +125,11 @@ class RealSense():
         dst = cv2.warpPerspective(frame[roi[1]:roi[1]+roi[3], roi[0]:roi[0]+roi[2]], H, (500, 500))
         
         return dst
+
+
+    def normalize_depth_frame(self, frame):
+        cv2.normalize(frame, frame, 0, 255, cv2.NORM_MINMAX)
+        return np.uint8(frame)
 
 
 
@@ -147,21 +151,45 @@ if __name__ == '__main__':
         rgb_image = cameraInstance.get_rgb_frame()
         depth_frame = cameraInstance.get_depth_frame()
 
-        # Display depth frame
+        # Display the RGB frame
+        cv2.imshow("RGB Frame", rgb_image)
+        key = cv2.waitKey(0)
+        if key == ord(' '):
+           cv2.destroyAllWindows()    
+
+        # Display the depth frame
         cv2.imshow("Depth Frame", depth_frame)
         key = cv2.waitKey(0)
         if key == ord(' '):
             cv2.destroyAllWindows()
 
+        # Calculate average depth frame
+        avg_depth_frame = cameraInstance.get_average_depth_frame(5)
+
+        print(avg_depth_frame)
+
+        # Normalize the depth frame
+        normalized_depth_frame = cameraInstance.normalize_depth_frame(avg_depth_frame)
+
+        # Display the normalized depth frame
+        cv2.imshow("Normalized Depth Frame", normalized_depth_frame)
+        key = cv2.waitKey(0)
+        if key == ord(' '):
+            cv2.destroyAllWindows()
 
         # Calculate diff frame
-        #diff_frame = cameraInstance.calculate_diff_avg_frames(depth_frame, 5)
+        diff_frame = cameraInstance.calculate_diff_avg_frames(depth_frame, 5)
 
-        # Display the diff frame
-        #cv2.imshow("Diff Frame", diff_frame)
-        #key = cv2.waitKey(0)
-        #if key == ord(' '):
-        #    cv2.destroyAllWindows()
+        print(diff_frame)
+
+        # Normalize the depth frame
+        normalized_diff_frame = cameraInstance.normalize_depth_frame(diff_frame)
+
+        # Display the normalized depth frame
+        cv2.imshow("Normalized Diff Frame", normalized_diff_frame)
+        key = cv2.waitKey(0)
+        if key == ord(' '):
+            cv2.destroyAllWindows()
 
         # Apply homographic transform
         #dst = cameraInstance.homographic_transform(diff_frame)

@@ -35,7 +35,6 @@ class RealSenseCamera:
         depth_sensor.set_option(rs.option.laser_power, 250)  # Adjust laser power
 
         # General attributes
-        self.num_frames = 10
         self.rgb_frames = []
         self.canvas = None
         self.is_running = False
@@ -43,18 +42,29 @@ class RealSenseCamera:
         # Attributes for ROI selection
         self.roi_points = None 
 
+        # Attributes for recording
+        self.recording = False
+
+        # Attributes for frame averaging
+        self.frame_averaging_enabled = False
+        self.num_frames = 10
+
         # Attributes for tkinter display
-        self.cp_width = 100
-        self.cp_height = 200
+        self.cp_width = 70
+        self.cp_height = 100
 
 
     ##########################################################################################################################
     # Stream management functions, use this to start and stop the camera streams
     def start_streams(self):
+        print("Starting streams")
+        print("Frame averaging enabled: ", self.frame_averaging_enabled)
+        print("Number of frames: ", self.num_frames)
         self.is_running = True
         self.update()
 
     def stop_streams(self):
+        print("Stopping streams")
         self.is_running = False
 
 
@@ -81,6 +91,14 @@ class RealSenseCamera:
         normalized_depth = np.clip((depth_image - q1) / (q3 - q1), 0, 1) * 255
         return normalized_depth.astype(np.uint8)
 
+    def calculate_average_depth_frame(self):
+        # Create the average depth frame
+        average_depth_frame = self.get_depth_frame()
+        for i in range(self.num_frames - 1):
+            average_depth_frame = average_depth_frame + self.get_depth_frame()
+        # Normalize the average depth frame
+        average_depth_frame = average_depth_frame / self.num_frames
+        return average_depth_frame
 
     ##########################################################################################################################
     # ROI selection functions
@@ -102,6 +120,47 @@ class RealSenseCamera:
 
     def reset_roi(self):
         self.roi_points = None
+
+    ##########################################################################################################################
+    # Recording functions
+    def start_recording(self):
+        self.recording = True
+
+        # Check if average frame is enabled
+        if self.frame_averaging_enabled:
+            # Get the average depth frame
+            self.first_depth_frame = self.calculate_average_depth_frame()
+        else:
+            # Get current depth frame
+            self.first_depth_frame = self.get_depth_frame()
+
+        # Check if ROI is selected
+        if self.roi_points is not None:
+            # Get ROI points
+            x, y, w, h = self.roi_points
+            # Crop depth image
+            self.first_depth_frame = self.processing_depth_frame[y:y + h, x:x + w]
+
+    def stop_recording(self):
+        self.recording = False
+
+        # Check if average frame is enabled
+        if self.frame_averaging_enabled:
+            # Get the average depth frame
+            self.last_depth_frame = self.calculate_average_depth_frame()
+        else:
+            # Get current depth frame
+            self.last_depth_frame = self.get_depth_frame()
+        
+        # Check if ROI is selected
+        if self.roi_points is not None:
+            # Get ROI points
+            x, y, w, h = self.roi_points
+            # Crop depth image
+            self.last_depth_frame = self.processing_depth_frame[y:y + h, x:x + w]
+
+        # Calculate the difference between the last and first depth frames
+        self.difference_depth_frame = self.first_depth_frame - self.last_depth_frame
 
     ##########################################################################################################################
     # Window update function
@@ -183,7 +242,7 @@ class RealSenseCamera:
         # Add buttons
         start_stream_button = tk.Button(buttons_frame, text="Start Stream", command=self.start_streams)
         start_stream_button.grid(row=0, column=0, padx=10, pady=5)
-
+        
         stop_stream_button = tk.Button(buttons_frame, text="Stop Stream", command=self.stop_streams)
         stop_stream_button.grid(row=0, column=1, padx=10, pady=5)
 
@@ -199,14 +258,22 @@ class RealSenseCamera:
         buttons_frame.grid(row=1, column=0, padx=10, pady=5)
 
         # Add buttons
-        enable_frame_averaging_button = tk.Button(buttons_frame, text="Enable Frame Averaging")
+        enable_frame_averaging_var = tk.IntVar()
+        enable_frame_averaging_button = tk.Checkbutton(buttons_frame,
+                                                       text="Enable Frame Averaging",
+                                                       variable=enable_frame_averaging_var,
+                                                       command=lambda: setattr(self, 'frame_averaging_enabled', enable_frame_averaging_var.get() == 1))
         enable_frame_averaging_button.grid(row=0, column=0, padx=10, pady=5)
 
         # Add numeric input field and set the value to self.num_frames and always update self.num_frames when the value is changed
-        self.num_frames_var = tk.StringVar()
-        self.num_frames_var.set(str(self.num_frames))
-        num_frames_input = tk.Entry(buttons_frame, textvariable=self.num_frames_var)
-        num_frames_input.grid(row=0, column=1, padx=10, pady=5)
+        num_frames_var = tk.IntVar()
+        num_frames_scale = tk.Scale(buttons_frame,
+                                    from_=1, to=100,
+                                    variable=num_frames_var,
+                                    orient=tk.HORIZONTAL,
+                                    command=lambda value: setattr(self, 'num_frames', num_frames_var.get()))
+        num_frames_scale.set(self.num_frames)  # Set the initial value
+        num_frames_scale.grid(row=0, column=1, padx=10, pady=5)
 
 
         # ROI Control Section
@@ -227,6 +294,24 @@ class RealSenseCamera:
         reset_roi_button.grid(row=0, column=1, padx=10, pady=5)
 
 
+        # Recording section
+        recording_frame = tk.Frame(control_pannel)
+        recording_frame.grid(row=3, column=0, padx=10, pady=5)
+        recording_label = tk.Label(recording_frame, text="Recording control", font=("Helvetica", 14))
+        recording_label.grid(row=0, column=0, padx=10, pady=5)
+
+        # Buttons Frame
+        buttons_frame = tk.Frame(recording_frame)
+        buttons_frame.grid(row=1, column=0, padx=10, pady=5)
+
+        # Add buttons
+        start_recording_button = tk.Button(buttons_frame, text="Start Recording")
+        start_recording_button.grid(row=0, column=0, padx=10, pady=5)
+
+        stop_recording_button = tk.Button(buttons_frame, text="Stop Recording")
+        stop_recording_button.grid(row=0, column=1, padx=10, pady=5)
+
+
         # Create the rgb stream frame
         self.rgb_stream_frame = tk.Label(self.canvas)
         self.rgb_stream_frame.grid(row=0, column=0, padx=10, pady=5)
@@ -234,7 +319,6 @@ class RealSenseCamera:
         # Create the depth stream frame
         self.depth_stream_frame = tk.Label(self.canvas)
         self.depth_stream_frame.grid(row=1, column=0, padx=10, pady=5)
-
 
 
 

@@ -18,12 +18,12 @@ class RealSenseCamera:
     """
 
     # Initialize the camera object
-    def __init__(self, num_frames=10, image_size_x=640, image_size_y=480):
+    def __init__(self):
         # Create a pipeline
         self.pipeline = rs.pipeline()
         config = rs.config()
-        config.enable_stream(rs.stream.color, image_size_x, image_size_y, rs.format.bgr8, 30)
-        config.enable_stream(rs.stream.depth, image_size_x, image_size_y, rs.format.z16, 30)
+        config.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+        config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
 
         # Additional settings to optimize depth image quality
         profile = self.pipeline.start(config)
@@ -35,17 +35,17 @@ class RealSenseCamera:
         depth_sensor.set_option(rs.option.laser_power, 250)  # Adjust laser power
 
         # General attributes
-        self.image_size_x = image_size_x
-        self.image_size_y = image_size_y
-        self.num_frames = num_frames
+        self.num_frames = 10
         self.rgb_frames = []
         self.canvas = None
         self.is_running = False
 
         # Attributes for ROI selection
-        self.start_roi_point = None
         self.roi_points = None 
-        self.roi_flag = False 
+
+        # Attributes for tkinter display
+        self.cp_width = 100
+        self.cp_height = 200
 
 
     ##########################################################################################################################
@@ -84,33 +84,24 @@ class RealSenseCamera:
 
     ##########################################################################################################################
     # ROI selection functions
-    def set_roi(self, event):
-        if self.is_running:
-            self.roi_flag = False
-            x, y = event.x, event.y
-            self.start_roi_point = (x, y)
-
-    def update_roi(self, event):
-        if self.is_running and self.start_roi_point:
-            x, y = event.x, event.y
-            self.roi_points = (self.start_roi_point[0], self.start_roi_point[1], x, y)
-
-    def release_roi(self, event):
-        if self.is_running and self.start_roi_point:
-            x1, y1 = self.start_roi_point
-            x2, y2 = event.x, event.y
-
-            # Store the latest ROI points
-            self.roi_points = (x1, y1, x2, y2)
-            print("Latest ROI Points:", self.roi_points)
-
-            # Reset the start_roi_point attribute
-            self.start_roi_point = None
-            self.roi_flag = True
+    def select_roi(self):
+        # Get the current depth frame and normalize it
+        depth_frame = self.normalize_depth_frame(self.get_depth_frame())
+        # Convert depth frame to RGB for display
+        depth_frame = cv2.cvtColor(depth_frame, cv2.COLOR_GRAY2RGB)
+        # Open new window for ROI selection
+        cv2.namedWindow("Select ROI")
+        cv2.imshow("Select ROI", depth_frame)
+        # Select ROI
+        roi_points = cv2.selectROI("Select ROI", depth_frame, fromCenter=False, showCrosshair=True)
+        # Close window when ROI is selected
+        cv2.destroyWindow("Select ROI")
+        # Save ROI points
+        self.roi_points = roi_points
+        self.roi_flag = True
 
     def reset_roi(self):
         self.roi_points = None
-        self.roi_flag = False
 
     ##########################################################################################################################
     # Window update function
@@ -120,58 +111,48 @@ class RealSenseCamera:
             rgb_frame = self.get_rgb_frame()
             depth_frame = self.get_depth_frame()
 
-            # Normalize depth frame
-            normalized_depth_frame = self.normalize_depth_frame(depth_frame)
+            # Save current RGB frame
+            self.rgb_frame = rgb_frame
 
-            # Display the RGB frame with the region of interest
-            self.rgb_frames = rgb_frame.copy()
+            # Save current depth frame and normalize it
+            self.normalized_depth_frame = self.normalize_depth_frame(depth_frame)
 
             # Display the frames in the Tkinter window
-            self.display_frames_tkinter(self.rgb_frames, normalized_depth_frame)
+            self.display_frames_tkinter()
 
             # Schedule the update method to be called after a delay
             self.canvas.after(10, self.update)
 
     ##########################################################################################################################
     # Display function
-    def display_frames_tkinter(self, rgb_frame, normalized_depth_frame):
+    def display_frames_tkinter(self):
+        # Crop depth image if ROI is selected
+        if self.roi_points is not None:
+            # Get ROI points
+            x, y, w, h = self.roi_points
+            # Crop depth image
+            self.normalized_depth_frame = self.normalized_depth_frame[y:y + h, x:x + w]
 
         # Convert frames to RGB format for PIL
-        rgb_image = Image.fromarray(cv2.cvtColor(rgb_frame, cv2.COLOR_BGR2RGB))
-        depth_image = Image.fromarray(normalized_depth_frame)
-
-        # Get size of the Tkinter canvas
-        width, height = self.canvas.winfo_width() // 2, self.canvas.winfo_height() // 2
+        rgb_image = Image.fromarray(cv2.cvtColor(self.rgb_frame, cv2.COLOR_BGR2RGB))
+        depth_image = Image.fromarray(self.normalized_depth_frame)
 
         # Convert images to PhotoImage
-        rgb_photo = ImageTk.PhotoImage(rgb_image)
-        depth_photo = ImageTk.PhotoImage(depth_image)
+        self.rgb_photo = ImageTk.PhotoImage(rgb_image)
+        self.depth_photo = ImageTk.PhotoImage(depth_image)
 
-        # Update the Tkinter canvas with images
-        self.canvas.create_image(width, 0, anchor="nw", image=rgb_photo, tags="rgb")
-        self.canvas.create_image(0, height, anchor="nw", image=depth_photo, tags="depth")
+        # Update the Tkinter rgb frame
+        self.rgb_stream_frame.imgtk = self.rgb_photo
+        self.rgb_stream_frame.configure(image=self.rgb_photo)
 
-        # Check if roi flag is true
-        if self.roi_flag:
-            if self.roi_points is not None:
-                # Get roi points
-                x, y, w, h = self.roi_points
-                # Crop the depth frame
-                normalized_depth_frame = normalized_depth_frame[y:h, x:w]
-                # Draw new rectangle with adjusted coordinates
-                self.canvas.create_rectangle(x, y, w, h, outline="red", tags="roi")
-        else:
-            if self.roi_points is not None:
-                # Get roi points
-                x, y, w, h = self.roi_points
-                # Delete previous rectangle
-                self.canvas.delete("roi")
-                # Draw new rectangle with adjusted coordinates
-                self.canvas.create_rectangle(x, y, w, h, outline="red", tags="roi")
+        # Update the Tkinter depth frame
+        self.depth_stream_frame.imgtk = self.depth_photo
+        self.depth_stream_frame.configure(image=self.depth_photo)
 
         # Keep a reference to the images to prevent garbage collection
-        self.canvas.rgb_photo = rgb_photo
-        self.canvas.depth_photo = depth_photo
+        self.rgb_stream_frame.rgb_photo = self.rgb_photo
+        self.depth_stream_frame.depth_photo = self.depth_photo
+
 
     ##########################################################################################################################
     # Main function
@@ -181,33 +162,82 @@ class RealSenseCamera:
         root.title("RealSense Camera GUI")
 
         # Create the main canvas
-        self.canvas = tk.Canvas(root, width=1300, height=990)
-        self.canvas.grid(row=0, column=0, columnspan=2, rowspan=2)
+        self.canvas = tk.Canvas(root, width=1200, height=990)
+        self.canvas.grid(row=0, column=1, padx=10, pady=5)
 
-        # Create buttons/control section
-        buttons_frame = tk.Frame(root)
-        buttons_frame.grid(row=0, column=0, sticky="nsew")
+        # Create the Control Panel
+        control_pannel = tk.Frame(root, width=self.cp_width, height=self.cp_height)
+        control_pannel.grid(row=0, column=0, sticky="nsew")
 
-        # Title text
-        title_label = tk.Label(buttons_frame, text="RealSense Camera Control", font=("Helvetica", 16))
-        title_label.pack()
+        # Inside the control panel, create frames for each section
+        # Stream Control Section
+        stream_control_frame = tk.Frame(control_pannel)
+        stream_control_frame.grid(row=0, column=0, padx=10, pady=5)
+        stream_control_label = tk.Label(stream_control_frame, text="Stream Control")
+        stream_control_label.grid(row=0, column=0, padx=10, pady=5)
 
-        # Start button
-        start_button = tk.Button(buttons_frame, text="Start", command=self.start_streams)
-        start_button.pack()
+        # Buttons Frame
+        buttons_frame = tk.Frame(stream_control_frame)
+        buttons_frame.grid(row=1, column=0, padx=10, pady=5)
 
-        # Stop button
-        stop_button = tk.Button(buttons_frame, text="Stop", command=self.stop_streams)
-        stop_button.pack()
+        # Add buttons
+        start_stream_button = tk.Button(buttons_frame, text="Start Stream", command=self.start_streams)
+        start_stream_button.grid(row=0, column=0, padx=10, pady=5)
 
-        # Reset ROI button
+        stop_stream_button = tk.Button(buttons_frame, text="Stop Stream", command=self.stop_streams)
+        stop_stream_button.grid(row=0, column=1, padx=10, pady=5)
+
+
+        # Frame processing section
+        frame_processing_frame = tk.Frame(control_pannel)
+        frame_processing_frame.grid(row=1, column=0, padx=10, pady=5)
+        frame_processing_label = tk.Label(frame_processing_frame, text="Frame Processing", font=("Helvetica", 14))
+        frame_processing_label.grid(row=0, column=0, padx=10, pady=5)
+
+        # Buttons Frame
+        buttons_frame = tk.Frame(frame_processing_frame)
+        buttons_frame.grid(row=1, column=0, padx=10, pady=5)
+
+        # Add buttons
+        enable_frame_averaging_button = tk.Button(buttons_frame, text="Enable Frame Averaging")
+        enable_frame_averaging_button.grid(row=0, column=0, padx=10, pady=5)
+
+        # Add numeric input field and set the value to self.num_frames and always update self.num_frames when the value is changed
+        self.num_frames_var = tk.StringVar()
+        self.num_frames_var.set(str(self.num_frames))
+        num_frames_input = tk.Entry(buttons_frame, textvariable=self.num_frames_var)
+        num_frames_input.grid(row=0, column=1, padx=10, pady=5)
+
+
+        # ROI Control Section
+        roi_control_frame = tk.Frame(control_pannel)
+        roi_control_frame.grid(row=2, column=0, padx=10, pady=5)
+        roi_control_label = tk.Label(roi_control_frame, text="ROI Control", font=("Helvetica", 14))
+        roi_control_label.grid(row=0, column=0, padx=10, pady=5)
+        
+        # Buttons Frame
+        buttons_frame = tk.Frame(roi_control_frame)
+        buttons_frame.grid(row=1, column=0, padx=10, pady=5)
+
+        # Add buttons
+        select_roi_button = tk.Button(buttons_frame, text="Select ROI", command=self.select_roi)
+        select_roi_button.grid(row=0, column=0, padx=10, pady=5)
+
         reset_roi_button = tk.Button(buttons_frame, text="Reset ROI", command=self.reset_roi)
-        reset_roi_button.pack()
+        reset_roi_button.grid(row=0, column=1, padx=10, pady=5)
 
-        # Bind mouse events for region of interest (ROI) selection
-        self.canvas.bind("<ButtonPress-1>", self.set_roi)
-        self.canvas.bind("<B1-Motion>", self.update_roi)
-        self.canvas.bind("<ButtonRelease-1>", self.release_roi)
+
+        # Create the rgb stream frame
+        self.rgb_stream_frame = tk.Label(self.canvas)
+        self.rgb_stream_frame.grid(row=0, column=0, padx=10, pady=5)
+
+        # Create the depth stream frame
+        self.depth_stream_frame = tk.Label(self.canvas)
+        self.depth_stream_frame.grid(row=1, column=0, padx=10, pady=5)
+
+
+
+
 
         # Start the Tkinter main loop
         root.mainloop()
@@ -216,6 +246,8 @@ class RealSenseCamera:
         self.pipeline.stop()
 
 
+
+
 if __name__ == "__main__":
-    camera = RealSenseCamera(num_frames=10, image_size_x=640, image_size_y=480)
+    camera = RealSenseCamera()
     camera.run()

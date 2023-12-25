@@ -1,8 +1,9 @@
-import cv2
+import os, cv2, logging
 import numpy as np
 import pyrealsense2 as rs
 import tkinter as tk
 from PIL import Image, ImageTk
+
 
 class RealSenseCamera:
     """
@@ -46,8 +47,12 @@ class RealSenseCamera:
         self.recording = False
 
         # Attributes for frame averaging
-        self.frame_averaging_enabled = False
+        self.frame_averaging_enabled = True
         self.num_frames = 10
+
+        # Volume calculation
+        self.volume_change = None
+        self.volume_change_threshold = 10000
 
         # Attributes for tkinter display
         self.cp_width = 70
@@ -93,9 +98,9 @@ class RealSenseCamera:
 
     def calculate_average_depth_frame(self):
         # Create the average depth frame
-        average_depth_frame = self.get_depth_frame()
+        average_depth_frame = np.asanyarray(self.get_depth_frame().get_data())
         for i in range(self.num_frames - 1):
-            average_depth_frame = average_depth_frame + self.get_depth_frame()
+            average_depth_frame = average_depth_frame + np.asanyarray(self.get_depth_frame().get_data())
         # Normalize the average depth frame
         average_depth_frame = average_depth_frame / self.num_frames
         return average_depth_frame
@@ -124,8 +129,6 @@ class RealSenseCamera:
     ##########################################################################################################################
     # Recording functions
     def start_recording(self):
-        self.recording = True
-
         # Check if average frame is enabled
         if self.frame_averaging_enabled:
             # Get the average depth frame
@@ -134,15 +137,21 @@ class RealSenseCamera:
             # Get current depth frame
             self.first_depth_frame = self.get_depth_frame()
 
-        # Check if ROI is selected
+        # Record depth and rgb frames to a folder videos
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        self.rgb_video = cv2.VideoWriter('videos/rgb.avi', fourcc, 15.0, (640, 480))
         if self.roi_points is not None:
-            # Get ROI points
-            x, y, w, h = self.roi_points
-            # Crop depth image
-            self.first_depth_frame = self.processing_depth_frame[y:y + h, x:x + w]
+            self.depth_video = cv2.VideoWriter('videos/depth.avi', fourcc, 15.0, (self.roi_points[2], self.roi_points[3]), isColor=False)
+        else:
+            self.depth_video = cv2.VideoWriter('videos/depth.avi', fourcc, 15.0, (640, 480), isColor=False)
+
+        self.recording = True
 
     def stop_recording(self):
+        # Release the video objects
         self.recording = False
+        self.rgb_video.release()
+        self.depth_video.release()
 
         # Check if average frame is enabled
         if self.frame_averaging_enabled:
@@ -151,16 +160,66 @@ class RealSenseCamera:
         else:
             # Get current depth frame
             self.last_depth_frame = self.get_depth_frame()
-        
+
+        # Calculate the difference between the last and first depth frames depending on the frame averaging setting
+        if not self.frame_averaging_enabled:
+            # Convert depth frames to NumPy arrays
+            first_depth_array = np.asanyarray(self.first_depth_frame.get_data())
+            last_depth_array = np.asanyarray(self.last_depth_frame.get_data())
+
+            # Calculate the difference between the last and first depth frames
+            self.difference_depth_frame = first_depth_array - last_depth_array
+
+            # Calculate the change in volume between the last and first depth frames
+            self.volume_change = np.sum(self.difference_depth_frame)
+            print("Volume change is {}".format(self.volume_change))
+
+            # Find out which pixels have changed
+            self.changed_pixels = np.where(self.difference_depth_frame > self.volume_change_threshold)
+
+
+        else:
+            # Calculate the difference between the last and first depth frames
+            self.difference_depth_frame = self.first_depth_frame - self.last_depth_frame
+
+            # Calculate the change in volume between the last and first depth frames
+            self.volume_change = np.sum(self.difference_depth_frame)
+            print("Volume change is {}".format(self.volume_change))
+
+            # Find out which pixels have changed
+            self.changed_pixels = np.where(self.difference_depth_frame > self.volume_change_threshold)
+            
+
+        # Normalize the differnce depth frame
+        q1 = np.percentile(self.difference_depth_frame, 25)
+        q3 = np.percentile(self.difference_depth_frame, 75)
+        normalized_diff_frame = np.clip((self.difference_depth_frame - q1) / (q3 - q1), 0, 1) * 255
+        self.normalized_diff_frame = normalized_diff_frame.astype(np.uint8)
+
         # Check if ROI is selected
         if self.roi_points is not None:
             # Get ROI points
             x, y, w, h = self.roi_points
             # Crop depth image
-            self.last_depth_frame = self.processing_depth_frame[y:y + h, x:x + w]
+            self.normalized_diff_frame = self.normalized_diff_frame[y:y + h, x:x + w]
 
-        # Calculate the difference between the last and first depth frames
-        self.difference_depth_frame = self.first_depth_frame - self.last_depth_frame
+        # Display the difference depth frame
+        cv2.namedWindow("Frame difference")
+        cv2.imshow("Frame difference", self.normalized_diff_frame)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+        # Convert the difference depth frame to an RGB image and highlight the changed pixels
+        self.norm_diff_depth_frame_changed = cv2.cvtColor(self.normalized_diff_frame, cv2.COLOR_GRAY2RGB)
+        self.norm_diff_depth_frame_changed[self.changed_pixels] = [0, 0, 255]
+
+        # Display the same frame but with the changed pixels highlighted and a legend with volume change
+        cv2.namedWindow("Volume change: {}".format(self.volume_change))
+        cv2.imshow("Volume change: {}".format(self.volume_change), self.norm_diff_depth_frame_changed)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+
+
 
     ##########################################################################################################################
     # Window update function
@@ -191,6 +250,12 @@ class RealSenseCamera:
             x, y, w, h = self.roi_points
             # Crop depth image
             self.normalized_depth_frame = self.normalized_depth_frame[y:y + h, x:x + w]
+
+        if self.recording:
+            # Write RGB frame to video
+            self.rgb_video.write(self.rgb_frame)
+            # Write depth frame to video
+            self.depth_video.write(self.normalized_depth_frame)
 
         # Convert frames to RGB format for PIL
         rgb_image = Image.fromarray(cv2.cvtColor(self.rgb_frame, cv2.COLOR_BGR2RGB))
@@ -294,9 +359,30 @@ class RealSenseCamera:
         reset_roi_button.grid(row=0, column=1, padx=10, pady=5)
 
 
+        # Volume calibration
+        volume_calibration_frame = tk.Frame(control_pannel)
+        volume_calibration_frame.grid(row=3, column=0, padx=10, pady=5)
+        volume_calibration_label = tk.Label(volume_calibration_frame, text="Volume Calibration", font=("Helvetica", 14))
+        volume_calibration_label.grid(row=0, column=0, padx=10, pady=5)
+
+        # Buttons Frame
+        buttons_frame = tk.Frame(volume_calibration_frame)
+        buttons_frame.grid(row=1, column=0, padx=10, pady=5)
+
+        # Add buttons
+        volume_change_threshold_var = tk.IntVar()
+        volume_change_threshold_scale = tk.Scale(buttons_frame,
+                                                 from_=0, to=100000,
+                                                 variable=volume_change_threshold_var,
+                                                 orient=tk.HORIZONTAL,
+                                                 command=lambda value: setattr(self, 'volume_change_threshold', volume_change_threshold_var.get()))
+        volume_change_threshold_scale.set(self.volume_change_threshold)  # Set the initial value
+        volume_change_threshold_scale.grid(row=0, column=0, padx=10, pady=5)
+
+
         # Recording section
         recording_frame = tk.Frame(control_pannel)
-        recording_frame.grid(row=3, column=0, padx=10, pady=5)
+        recording_frame.grid(row=4, column=0, padx=10, pady=5)
         recording_label = tk.Label(recording_frame, text="Recording control", font=("Helvetica", 14))
         recording_label.grid(row=0, column=0, padx=10, pady=5)
 
@@ -305,10 +391,10 @@ class RealSenseCamera:
         buttons_frame.grid(row=1, column=0, padx=10, pady=5)
 
         # Add buttons
-        start_recording_button = tk.Button(buttons_frame, text="Start Recording")
+        start_recording_button = tk.Button(buttons_frame, text="Start Recording", command=self.start_recording)
         start_recording_button.grid(row=0, column=0, padx=10, pady=5)
 
-        stop_recording_button = tk.Button(buttons_frame, text="Stop Recording")
+        stop_recording_button = tk.Button(buttons_frame, text="Stop Recording", command=self.stop_recording)
         stop_recording_button.grid(row=0, column=1, padx=10, pady=5)
 
 
@@ -319,8 +405,6 @@ class RealSenseCamera:
         # Create the depth stream frame
         self.depth_stream_frame = tk.Label(self.canvas)
         self.depth_stream_frame.grid(row=1, column=0, padx=10, pady=5)
-
-
 
 
         # Start the Tkinter main loop

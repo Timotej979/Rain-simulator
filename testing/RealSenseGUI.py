@@ -52,7 +52,7 @@ class RealSenseCamera:
 
         # Volume calculation
         self.volume_change = None
-        self.volume_change_threshold = 10000
+        self.volume_change_threshold = 0.2
 
         # Attributes for tkinter display
         self.cp_width = 70
@@ -85,6 +85,15 @@ class RealSenseCamera:
         frames = self.pipeline.wait_for_frames()
         depth_frame = frames.get_depth_frame()
         return depth_frame
+
+    def get_real_depth_frame(self):
+        frames = self.pipeline.wait_for_frames()
+        depth_frame = frames.get_depth_frame()
+        depth_image = np.zeros((480, 640), dtype=np.float32)
+        for i in range(480):
+            for j in range(640):
+                depth_image[i, j] = depth_frame.get_distance(j, i)
+        return depth_image
 
 
     ##########################################################################################################################
@@ -133,9 +142,11 @@ class RealSenseCamera:
         if self.frame_averaging_enabled:
             # Get the average depth frame
             self.first_depth_frame = self.calculate_average_depth_frame()
+            self.real_first_depth_frame = self.get_real_depth_frame()
         else:
             # Get current depth frame
             self.first_depth_frame = self.get_depth_frame()
+            self.real_first_depth_frame = self.get_real_depth_frame()
 
         # Record depth and rgb frames to a folder videos
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
@@ -157,9 +168,11 @@ class RealSenseCamera:
         if self.frame_averaging_enabled:
             # Get the average depth frame
             self.last_depth_frame = self.calculate_average_depth_frame()
+            self.real_last_depth_frame = self.get_real_depth_frame()
         else:
             # Get current depth frame
             self.last_depth_frame = self.get_depth_frame()
+            self.real_last_depth_frame = self.get_real_depth_frame()
 
         # Calculate the difference between the last and first depth frames depending on the frame averaging setting
         if not self.frame_averaging_enabled:
@@ -169,25 +182,29 @@ class RealSenseCamera:
 
             # Calculate the difference between the last and first depth frames
             self.difference_depth_frame = first_depth_array - last_depth_array
+            self.real_difference_depth_frame = self.real_first_depth_frame - self.real_last_depth_frame
 
             # Calculate the change in volume between the last and first depth frames
-            self.volume_change = np.sum(self.difference_depth_frame)
+            self.volume_change = np.sum(self.real_difference_depth_frame)
             print("Volume change is {}".format(self.volume_change))
 
             # Find out which pixels have changed
-            self.changed_pixels = np.where(self.difference_depth_frame > self.volume_change_threshold)
+            self.changed_pixels = np.where(self.real_difference_depth_frame > self.volume_change_threshold)
 
 
         else:
             # Calculate the difference between the last and first depth frames
             self.difference_depth_frame = self.first_depth_frame - self.last_depth_frame
+            self.real_difference_depth_frame = self.real_first_depth_frame - self.real_last_depth_frame
+
+            print("Real difference depth frame: ", self.real_difference_depth_frame)
 
             # Calculate the change in volume between the last and first depth frames
-            self.volume_change = np.sum(self.difference_depth_frame)
+            self.volume_change = np.sum(self.real_difference_depth_frame)
             print("Volume change is {}".format(self.volume_change))
 
             # Find out which pixels have changed
-            self.changed_pixels = np.where(self.difference_depth_frame > self.volume_change_threshold)
+            self.changed_pixels = np.where(self.real_difference_depth_frame > self.volume_change_threshold)
             
 
         # Normalize the differnce depth frame

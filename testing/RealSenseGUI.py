@@ -52,7 +52,7 @@ class RealSenseCamera:
 
         # Volume calculation
         self.volume_change = None
-        self.volume_change_threshold = 0.2
+        self.volume_change_threshold = 0.5
 
         # Attributes for tkinter display
         self.cp_width = 70
@@ -65,6 +65,9 @@ class RealSenseCamera:
         print("Starting streams")
         print("Frame averaging enabled: ", self.frame_averaging_enabled)
         print("Number of frames: ", self.num_frames)
+        print("ROI points: ", self.roi_points)
+        print("Volume change threshold: {:.2f}".format(self.volume_change_threshold))
+        print("Recording: ", self.recording)
         self.is_running = True
         self.update()
 
@@ -142,10 +145,16 @@ class RealSenseCamera:
         if self.frame_averaging_enabled:
             # Get the average depth frame
             self.first_depth_frame = self.calculate_average_depth_frame()
-            self.real_first_depth_frame = self.get_real_depth_frame()
         else:
             # Get current depth frame
             self.first_depth_frame = self.get_depth_frame()
+
+        # Check if ROI is selected and crop the real depth frame
+        if self.roi_points is not None:
+            real_first_depth_frame = self.get_real_depth_frame()
+            self.real_first_depth_frame = real_first_depth_frame[self.roi_points[1]:self.roi_points[1] + self.roi_points[3],
+                                                                    self.roi_points[0]:self.roi_points[0] + self.roi_points[2]]
+        else:
             self.real_first_depth_frame = self.get_real_depth_frame()
 
         # Record depth and rgb frames to a folder videos
@@ -168,12 +177,18 @@ class RealSenseCamera:
         if self.frame_averaging_enabled:
             # Get the average depth frame
             self.last_depth_frame = self.calculate_average_depth_frame()
-            self.real_last_depth_frame = self.get_real_depth_frame()
         else:
             # Get current depth frame
             self.last_depth_frame = self.get_depth_frame()
-            self.real_last_depth_frame = self.get_real_depth_frame()
 
+        # Check if ROI is selected and crop the real depth frame
+        if self.roi_points is not None:
+            real_last_depth_frame = self.get_real_depth_frame()
+            self.real_last_depth_frame = real_last_depth_frame[self.roi_points[1]:self.roi_points[1] + self.roi_points[3],
+                                                                self.roi_points[0]:self.roi_points[0] + self.roi_points[2]]
+        else:
+            self.real_last_depth_frame = self.get_real_depth_frame()
+        
         # Calculate the difference between the last and first depth frames depending on the frame averaging setting
         if not self.frame_averaging_enabled:
             # Convert depth frames to NumPy arrays
@@ -182,30 +197,19 @@ class RealSenseCamera:
 
             # Calculate the difference between the last and first depth frames
             self.difference_depth_frame = first_depth_array - last_depth_array
-            self.real_difference_depth_frame = self.real_first_depth_frame - self.real_last_depth_frame
-
-            # Calculate the change in volume between the last and first depth frames
-            self.volume_change = np.sum(self.real_difference_depth_frame)
-            print("Volume change is {}".format(self.volume_change))
-
-            # Find out which pixels have changed
-            self.changed_pixels = np.where(self.real_difference_depth_frame > self.volume_change_threshold)
-
 
         else:
             # Calculate the difference between the last and first depth frames
             self.difference_depth_frame = self.first_depth_frame - self.last_depth_frame
-            self.real_difference_depth_frame = self.real_first_depth_frame - self.real_last_depth_frame
 
-            print("Real difference depth frame: ", self.real_difference_depth_frame)
+        self.real_difference_depth_frame = self.real_first_depth_frame - self.real_last_depth_frame
 
-            # Calculate the change in volume between the last and first depth frames
-            self.volume_change = np.sum(self.real_difference_depth_frame)
-            print("Volume change is {}".format(self.volume_change))
+        # Calculate the change in volume between the last and first depth frames
+        self.volume_change = np.sum(self.real_difference_depth_frame) / 1e3
+        print("Volume change is {} liters".format(self.volume_change))
 
-            # Find out which pixels have changed
-            self.changed_pixels = np.where(self.real_difference_depth_frame > self.volume_change_threshold)
-            
+        # Find out which pixels have changed
+        self.changed_pixels = np.where(self.real_difference_depth_frame > self.volume_change_threshold)
 
         # Normalize the differnce depth frame
         q1 = np.percentile(self.difference_depth_frame, 25)
@@ -232,7 +236,7 @@ class RealSenseCamera:
 
         # Display the same frame but with the changed pixels highlighted and a legend with volume change
         cv2.namedWindow("Volume change: {}".format(self.volume_change))
-        cv2.imshow("Volume change: {}".format(self.volume_change), self.norm_diff_depth_frame_changed)
+        cv2.imshow("Volume change: {} liters".format(self.volume_change), self.norm_diff_depth_frame_changed)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
@@ -379,7 +383,7 @@ class RealSenseCamera:
         # Volume calibration
         volume_calibration_frame = tk.Frame(control_pannel)
         volume_calibration_frame.grid(row=3, column=0, padx=10, pady=5)
-        volume_calibration_label = tk.Label(volume_calibration_frame, text="Volume Calibration", font=("Helvetica", 14))
+        volume_calibration_label = tk.Label(volume_calibration_frame, text="Volume Calculation Calibration", font=("Helvetica", 14))
         volume_calibration_label.grid(row=0, column=0, padx=10, pady=5)
 
         # Buttons Frame
@@ -387,9 +391,11 @@ class RealSenseCamera:
         buttons_frame.grid(row=1, column=0, padx=10, pady=5)
 
         # Add buttons
-        volume_change_threshold_var = tk.IntVar()
+        volume_change_threshold_var = tk.DoubleVar()
         volume_change_threshold_scale = tk.Scale(buttons_frame,
-                                                 from_=0, to=100000,
+                                                 from_=0, to=5,
+                                                 resolution=0.02,
+                                                 length=200,
                                                  variable=volume_change_threshold_var,
                                                  orient=tk.HORIZONTAL,
                                                  command=lambda value: setattr(self, 'volume_change_threshold', volume_change_threshold_var.get()))

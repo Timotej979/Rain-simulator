@@ -1,0 +1,10 @@
+name: realsense-camera-env
+channels:
+  - defaults
+dependencies:
+  - python=3.11
+  - numpy
+  - opencv
+  - pyrealsense2
+  - tkinter
+  - pillow

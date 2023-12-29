@@ -1,4 +1,4 @@
-import os, cv2, logging
+import os, cv2, datetime
 import numpy as np
 import pyrealsense2 as rs
 import tkinter as tk
@@ -32,6 +32,7 @@ class RealSenseCamera:
         is_running: Boolean for camera stream status
         roi_points: ROI points for depth image
         recording: Boolean for recording status
+        recording_counter: Counter for number of measurements recorded
         frame_averaging_enabled: Boolean for frame averaging status
         num_frames: Number of frames to average
         volume_change: Volume change between the first and last depth frames
@@ -67,6 +68,7 @@ class RealSenseCamera:
 
         # Attributes for recording
         self.recording = False
+        self.recording_conuter = 1
 
         # Attributes for frame averaging
         self.frame_averaging_enabled = True
@@ -181,8 +183,8 @@ class RealSenseCamera:
 
         # Record depth and rgb frames to a folder videos
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
-        self.rgb_video = cv2.VideoWriter('videos/rgb.avi', fourcc, 15.0, (640, 480))
-        self.depth_video = cv2.VideoWriter('videos/depth.avi', fourcc, 15.0, (640, 480), isColor=False)
+        self.rgb_video = cv2.VideoWriter('data/rgb{}.avi'.format(self.recording_conuter), fourcc, 15.0, (640, 480))
+        self.depth_video = cv2.VideoWriter('data/depth{}.avi'.format(self.recording_conuter), fourcc, 15.0, (640, 480), isColor=False)
 
         self.recording = True
 
@@ -260,13 +262,27 @@ class RealSenseCamera:
         cv2.destroyAllWindows()
 
         # Write the volume change to the measurements log
-        self.measurements_log.insert(tk.END, "Meassurement settings: \n")
+        self.measurements_log.insert(tk.END, "Recorded meassurement {}: \n".format(self.recording_conuter))
         self.measurements_log.insert(tk.END, "Frame averaging enabled: {}\n".format(self.frame_averaging_enabled))
         self.measurements_log.insert(tk.END, "Number of frames: {}\n".format(self.num_frames))
         self.measurements_log.insert(tk.END, "Volume change threshold: {:.2f}\n".format(self.volume_change_threshold))
         self.measurements_log.insert(tk.END, "Volume change: {:.1f} liters\n".format(self.volume_change))
+        self.measurements_log.insert(tk.END, "Timestamp: {}\n".format(str(datetime.datetime.now())))
         self.measurements_log.insert(tk.END, "----------------------------------------\n")
         self.measurements_log.see(tk.END)
+
+        # Write the volume change to a file
+        with open("data/measurements.txt", "a") as f:
+            f.write("Recorded meassurement {}: \n".format(self.recording_conuter))
+            f.write("Frame averaging enabled: {}\n".format(self.frame_averaging_enabled))
+            f.write("Number of frames: {}\n".format(self.num_frames))
+            f.write("Volume change threshold: {:.2f}\n".format(self.volume_change_threshold))
+            f.write("Volume change: {:.1f} liters\n".format(self.volume_change))
+            f.write("Timestamp: {}\n".format(str(datetime.datetime.now())))
+            f.write("----------------------------------------\n")
+
+        # Increment the recording counter
+        self.recording_conuter = self.recording_conuter + 1
 
 
     ##########################################################################################################################
@@ -476,6 +492,11 @@ class RealSenseCamera:
         # Clear the measurements log button
         clear_measurements_log_button = tk.Button(measurements_log_frame, text="Clear log", command=lambda: self.measurements_log.delete(1.0, tk.END))
         clear_measurements_log_button.grid(row=2, column=0, padx=10, pady=5)
+
+
+        # Delete contents of the data folder
+        delete_data_folder_button = tk.Button(control_pannel, text="Delete data folder", command=lambda: os.system("rm -rf data/*"))
+        delete_data_folder_button.grid(row=6, column=0, padx=10, pady=5)
 
 
         # Create the frames for the RGB and depth streams

@@ -9,13 +9,35 @@ class RealSenseCamera:
     """
     Class for RealSense camera
     Methods:
-        - get_rgb_frame(): Get RGB frame
-        - get_depth_frame(): Get depth frame
-        - normalize_depth_frame(depth_frame): Normalize depth frame
-        - calculate_average_depth_frame(): Calculate average depth frame
-        - calculate_difference_frames(frame1, frame2): Calculate difference frames
-        - run(): Run the camera
+        __init__(): Initialize the camera object
+        start_streams(): Start the camera streams
+        stop_streams(): Stop the camera streams
+        get_rgb_frame(): Get the current RGB frame
+        get_depth_frame(): Get the current depth frame
+        get_real_depth_frame(): Get the current depth frame in real units
+        normalize_depth_frame(): Normalize the depth frame
+        calculate_average_depth_frame(): Calculate the average depth frame
+        select_roi(): Select ROI for depth image
+        reset_roi(): Reset ROI for depth image
+        start_recording(): Start recording RGB and depth frames
+        stop_recording(): Stop recording RGB and depth frames
+        update(): Update the Tkinter window
+        display_frames_tkinter(): Display the frames in the Tkinter window
+        run(): Run the Tkinter window
 
+    Attributes:
+        pipeline: RealSense pipeline object
+        rgb_frames: List of RGB frames
+        canvas: Tkinter canvas object
+        is_running: Boolean for camera stream status
+        roi_points: ROI points for depth image
+        recording: Boolean for recording status
+        frame_averaging_enabled: Boolean for frame averaging status
+        num_frames: Number of frames to average
+        volume_change: Volume change between the first and last depth frames
+        volume_change_threshold: Threshold for volume change
+        cp_width: Width of the control panel
+        cp_height: Height of the control panel
     """
 
     # Initialize the camera object

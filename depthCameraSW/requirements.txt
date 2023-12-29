@@ -2,4 +2,4 @@ python==3.11
 numpy==1.21.0
 opencv-python==4.5.3.56
 pyrealsense2==2.56.0.2704
-Pillow==8.2.0
+Pillow==10.0.1

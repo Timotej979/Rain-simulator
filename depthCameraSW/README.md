@@ -98,3 +98,5 @@ This will launch the Tkinter window with the camera streams and control panel.
 
 - RGB Stream: Displays the real-time RGB camera stream.
 - Depth Stream: Displays the real-time depth camera stream. The depth frames can be processed, and changes can be visualized.
+
+![realsensegui.png](/docs/assets/realsensegui.png)

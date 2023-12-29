@@ -368,7 +368,7 @@ class RealSenseCamera:
         # Stream Control Section
         stream_control_frame = tk.Frame(control_pannel)
         stream_control_frame.grid(row=0, column=0, padx=10, pady=5)
-        stream_control_label = tk.Label(stream_control_frame, text="Stream Control")
+        stream_control_label = tk.Label(stream_control_frame, text="Stream Control", font=("Helvetica", 14))
         stream_control_label.grid(row=0, column=0, padx=10, pady=5)
 
         # Buttons Frame

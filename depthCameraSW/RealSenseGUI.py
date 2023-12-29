@@ -2,7 +2,7 @@ import os, cv2, logging
 import numpy as np
 import pyrealsense2 as rs
 import tkinter as tk
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageDraw
 
 
 class RealSenseCamera:
@@ -52,7 +52,7 @@ class RealSenseCamera:
 
         # Volume calculation
         self.volume_change = None
-        self.volume_change_threshold = 0.5
+        self.volume_change_threshold = 0.7
 
         # Attributes for tkinter display
         self.cp_width = 70
@@ -160,10 +160,7 @@ class RealSenseCamera:
         # Record depth and rgb frames to a folder videos
         fourcc = cv2.VideoWriter_fourcc(*'XVID')
         self.rgb_video = cv2.VideoWriter('videos/rgb.avi', fourcc, 15.0, (640, 480))
-        if self.roi_points is not None:
-            self.depth_video = cv2.VideoWriter('videos/depth.avi', fourcc, 15.0, (self.roi_points[2], self.roi_points[3]), isColor=False)
-        else:
-            self.depth_video = cv2.VideoWriter('videos/depth.avi', fourcc, 15.0, (640, 480), isColor=False)
+        self.depth_video = cv2.VideoWriter('videos/depth.avi', fourcc, 15.0, (640, 480), isColor=False)
 
         self.recording = True
 
@@ -206,7 +203,7 @@ class RealSenseCamera:
 
         # Calculate the change in volume between the last and first depth frames
         self.volume_change = np.sum(self.real_difference_depth_frame) / 1e3
-        print("Volume change is {} liters".format(self.volume_change))
+        print("Volume change is {:.1f} liters".format(self.volume_change))
 
         # Find out which pixels have changed
         self.changed_pixels = np.where(self.real_difference_depth_frame > self.volume_change_threshold)
@@ -235,11 +232,19 @@ class RealSenseCamera:
         self.norm_diff_depth_frame_changed[self.changed_pixels] = [0, 0, 255]
 
         # Display the same frame but with the changed pixels highlighted and a legend with volume change
-        cv2.namedWindow("Volume change: {}".format(self.volume_change))
-        cv2.imshow("Volume change: {} liters".format(self.volume_change), self.norm_diff_depth_frame_changed)
+        cv2.namedWindow("Volume change: {:.1f} liters".format(self.volume_change))
+        cv2.imshow("Volume change: {:.1f} liters".format(self.volume_change), self.norm_diff_depth_frame_changed)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 
+        # Write the volume change to the measurements log
+        self.measurements_log.insert(tk.END, "Meassurement settings: \n")
+        self.measurements_log.insert(tk.END, "Frame averaging enabled: {}\n".format(self.frame_averaging_enabled))
+        self.measurements_log.insert(tk.END, "Number of frames: {}\n".format(self.num_frames))
+        self.measurements_log.insert(tk.END, "Volume change threshold: {:.2f}\n".format(self.volume_change_threshold))
+        self.measurements_log.insert(tk.END, "Volume change: {:.1f} liters\n".format(self.volume_change))
+        self.measurements_log.insert(tk.END, "----------------------------------------\n")
+        self.measurements_log.see(tk.END)
 
 
     ##########################################################################################################################
@@ -265,22 +270,29 @@ class RealSenseCamera:
     ##########################################################################################################################
     # Display function
     def display_frames_tkinter(self):
-        # Crop depth image if ROI is selected
-        if self.roi_points is not None:
-            # Get ROI points
-            x, y, w, h = self.roi_points
-            # Crop depth image
-            self.normalized_depth_frame = self.normalized_depth_frame[y:y + h, x:x + w]
-
         if self.recording:
             # Write RGB frame to video
             self.rgb_video.write(self.rgb_frame)
             # Write depth frame to video
             self.depth_video.write(self.normalized_depth_frame)
 
+        # Check if ROI is selected for depth image
+        if self.roi_points is not None:
+            # Get ROI points for depth image
+            x_depth, y_depth, w_depth, h_depth = self.roi_points
+            # Convert depth image to RGB format for PIL
+            depth_image_rgb = Image.fromarray(cv2.cvtColor(self.normalized_depth_frame, cv2.COLOR_GRAY2RGB))
+            # Create a drawing object for depth image
+            draw_depth = ImageDraw.Draw(depth_image_rgb)
+            # Draw blue rectangle on the depth image using ROI points
+            draw_depth.rectangle([x_depth, y_depth, x_depth + w_depth, y_depth + h_depth], outline=(255, 0, 0), width=2)
+            # Use the modified depth image with the rectangle
+            depth_image = depth_image_rgb
+        else:
+            depth_image = Image.fromarray(self.normalized_depth_frame)
+
         # Convert frames to RGB format for PIL
         rgb_image = Image.fromarray(cv2.cvtColor(self.rgb_frame, cv2.COLOR_BGR2RGB))
-        depth_image = Image.fromarray(self.normalized_depth_frame)
 
         # Convert images to PhotoImage
         self.rgb_photo = ImageTk.PhotoImage(rgb_image)
@@ -420,7 +432,31 @@ class RealSenseCamera:
         stop_recording_button = tk.Button(buttons_frame, text="Stop Recording", command=self.stop_recording)
         stop_recording_button.grid(row=0, column=1, padx=10, pady=5)
 
+        
+        # Meassurements log section
+        measurements_log_frame = tk.Frame(control_pannel)
+        measurements_log_frame.grid(row=5, column=0, padx=10, pady=5)
+        measurements_log_label = tk.Label(measurements_log_frame, text="Measurements", font=("Helvetica", 14))
+        measurements_log_label.grid(row=0, column=0, padx=10, pady=5)
 
+        # Create a text box for the measurements log
+        self.measurements_log = tk.Text(measurements_log_frame, width=50, height=30)
+        self.measurements_log.grid(row=1, column=0, padx=10, pady=5)
+
+        # Create a scrollbar for the measurements log
+        measurements_log_scrollbar = tk.Scrollbar(measurements_log_frame)
+        measurements_log_scrollbar.grid(row=1, column=1, sticky="ns")
+
+        # Attach the scrollbar to the measurements log
+        self.measurements_log.config(yscrollcommand=measurements_log_scrollbar.set)
+        measurements_log_scrollbar.config(command=self.measurements_log.yview)
+
+        # Clear the measurements log button
+        clear_measurements_log_button = tk.Button(measurements_log_frame, text="Clear log", command=lambda: self.measurements_log.delete(1.0, tk.END))
+        clear_measurements_log_button.grid(row=2, column=0, padx=10, pady=5)
+
+
+        # Create the frames for the RGB and depth streams
         # Create the rgb stream frame
         self.rgb_stream_frame = tk.Label(self.canvas)
         self.rgb_stream_frame.grid(row=0, column=0, padx=10, pady=5)

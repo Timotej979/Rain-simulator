@@ -323,7 +323,7 @@ class RealSenseCamera:
             # Create a drawing object for depth image
             draw_depth = ImageDraw.Draw(depth_image_rgb)
             # Draw blue rectangle on the depth image using ROI points
-            draw_depth.rectangle([x_depth, y_depth, x_depth + w_depth, y_depth + h_depth], outline=(255, 0, 0), width=2)
+            draw_depth.rectangle([x_depth, y_depth, x_depth + w_depth, y_depth + h_depth], outline=(0, 0, 255), width=2)
             # Use the modified depth image with the rectangle
             depth_image = depth_image_rgb
         else:
